@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f6e66">
+<title>إدارة العملاء</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+html,body{margin:0;height:100%;background:#0f6e66;overflow:hidden}
+#app{position:fixed;inset:0;width:100%;height:100%;border:0;background:#f4f6f5}
+#wait{position:fixed;inset:0;display:grid;place-items:center;color:#fff;font:600 16px system-ui,sans-serif;text-align:center;padding:24px}
+#wait[hidden]{display:none}
+#wait a{color:#fff;margin-top:14px;display:inline-block}
+</style>
+</head>
+<body>
+<div id="wait">جارٍ فتح إدارة العملاء…<br><a id="open" href="#" hidden>لو ما فتحش، اضغط هنا</a></div>
+<iframe id="app" title="إدارة العملاء" allow="geolocation; fullscreen; clipboard-write" referrerpolicy="no-referrer-when-downgrade"></iframe>
+<script>
+/* رابط النظام (exec). لو اتغير النشر، عدّل السطر ده بس. */
+const APP='https://script.google.com/macros/s/AKfycbwkCJ8TuyB94kpOBbGSP_KQu-vqeSv2fld8Dy-o8RCTUsu9iDdOcKvmmPf9MdiC6jz0/exec';
+const f=document.getElementById('app'),w=document.getElementById('wait'),o=document.getElementById('open');
+o.href=APP;f.src=APP;
+f.addEventListener('load',()=>{w.hidden=true});
+/* لو الإطار ما فتحش (مثلًا محتاج تسجيل دخول جوجل)، نعرض رابط يفتح النظام مباشرة */
+setTimeout(()=>{if(!w.hidden)o.hidden=false},8000);
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
