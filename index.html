@@ -11,22 +11,33 @@
 <style>
 html,body{margin:0;height:100%;background:#0f6e66;overflow:hidden}
 #app{position:fixed;inset:0;width:100%;height:100%;border:0;background:#f4f6f5}
-#wait{position:fixed;inset:0;display:grid;place-items:center;color:#fff;font:600 16px system-ui,sans-serif;text-align:center;padding:24px}
+#wait{position:fixed;inset:0;z-index:2;display:grid;place-items:center;align-content:center;gap:14px;background:#0f6e66;color:#fff;font:600 16px system-ui,sans-serif;text-align:center;padding:24px}
 #wait[hidden]{display:none}
-#wait a{color:#fff;margin-top:14px;display:inline-block}
+#wait a{color:#0f6e66;background:#fff;border-radius:12px;padding:12px 20px;text-decoration:none;font-weight:700}
+#wait a[hidden]{display:none}
+#wait small{font-weight:400;opacity:.85;max-width:320px;line-height:1.7}
 </style>
 </head>
 <body>
-<div id="wait">جارٍ فتح إدارة العملاء…<br><a id="open" href="#" hidden>لو ما فتحش، اضغط هنا</a></div>
+<div id="wait"><span id="msg">جارٍ فتح إدارة العملاء…</span><a id="open" href="#" hidden>افتح إدارة العملاء</a><small id="why" hidden></small></div>
 <iframe id="app" title="إدارة العملاء" allow="geolocation; fullscreen; clipboard-write" referrerpolicy="no-referrer-when-downgrade"></iframe>
 <script>
 /* رابط النظام (exec). لو اتغير النشر، عدّل السطر ده بس. */
 const APP='https://script.google.com/macros/s/AKfycbwkCJ8TuyB94kpOBbGSP_KQu-vqeSv2fld8Dy-o8RCTUsu9iDdOcKvmmPf9MdiC6jz0/exec';
-const f=document.getElementById('app'),w=document.getElementById('wait'),o=document.getElementById('open');
-o.href=APP;f.src=APP;
-f.addEventListener('load',()=>{w.hidden=true});
-/* لو الإطار ما فتحش (مثلًا محتاج تسجيل دخول جوجل)، نعرض رابط يفتح النظام مباشرة */
-setTimeout(()=>{if(!w.hidden)o.hidden=false},8000);
+/* EMBED-1 (2026-10-19): جوجل بيرفض يعرض جوه الإطار صفحات تسجيل الدخول واختيار الحساب والأخطاء
+   («script.google.com refused to connect»). البرنامج بيبعت «جاهز» لما يفتح فعلًا؛ لو ما وصلش في الوقت،
+   الصفحة بتفتح النظام مباشرة (من غير إطار) علشان جوجل يقدر يطلب الدخول، وبعد كده الإطار يرجع يشتغل عادي. */
+const WAIT_MS=12000;
+const f=document.getElementById('app'),w=document.getElementById('wait'),o=document.getElementById('open'),msg=document.getElementById('msg'),why=document.getElementById('why');
+let ok=false;o.href=APP;
+const fromGoogle=origin=>/^https:\/\/([\w-]+\.)*(googleusercontent\.com|google\.com)$/.test(origin);
+window.addEventListener('message',e=>{if(!fromGoogle(e.origin)||!e.data||!e.data.crm)return;
+  if(e.data.crm==='ready'||e.data.crm==='gate'){ok=true;w.hidden=true}});
+function direct(reason){if(ok)return;msg.textContent='بنفتح النظام مباشرة…';why.textContent=reason;why.hidden=false;o.hidden=false;
+  setTimeout(()=>{if(!ok)location.replace(APP)},1200)}
+f.src=APP;
+setTimeout(()=>direct('جوجل محتاج يتأكد من حسابك. لو طلب تسجيل الدخول أو اختيار الحساب، اختار حسابك المسجل في النظام.'),WAIT_MS);
+if(!navigator.onLine){msg.textContent='مفيش إنترنت دلوقتي';o.hidden=false}
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
