@@ -31,8 +31,14 @@ const WAIT_MS=12000;
 const f=document.getElementById('app'),w=document.getElementById('wait'),o=document.getElementById('open'),msg=document.getElementById('msg'),why=document.getElementById('why');
 let ok=false;o.href=APP;
 const fromGoogle=origin=>/^https:\/\/([\w-]+\.)*(googleusercontent\.com|google\.com)$/.test(origin);
-window.addEventListener('message',e=>{if(!fromGoogle(e.origin)||!e.data||!e.data.crm)return;
-  if(e.data.crm==='ready'||e.data.crm==='gate'){ok=true;w.hidden=true}});
+/* VIS-FAST-2 (2026-10-20): نسخة الزيارات على الجهاز بتتحفظ هنا (في صفحة التطبيق نفسها)، علشان الإطار ساعات بيتمنع من التخزين.
+   لكل مستخدم مفتاح، أقصى 2.5 ميجا و12 ساعة، ومن مواقع جوجل بس، والرد بيروح لنفس الإطار اللي طلب. */
+const C_MAX=2.5e6,C_AGE=12*36e5,ckey=k=>'crm-cache:'+String(k).slice(0,120);
+window.addEventListener('message',e=>{if(!fromGoogle(e.origin)||!e.data||!e.data.crm)return;const d=e.data;
+  if(d.crm==='ready'||d.crm==='gate'){ok=true;w.hidden=true;return}
+  if(d.crm==='cachePut'&&typeof d.key==='string'&&typeof d.raw==='string'&&d.raw.length<=C_MAX){try{localStorage.setItem(ckey(d.key),JSON.stringify({at:Date.now(),raw:d.raw}))}catch(x){}return}
+  if(d.crm==='cacheGet'&&typeof d.key==='string'){let v=null;try{v=JSON.parse(localStorage.getItem(ckey(d.key))||'null')}catch(x){}
+    if(v&&v.raw&&Date.now()-v.at<C_AGE)try{e.source.postMessage({crm:'cacheVal',key:d.key,at:v.at,raw:v.raw},e.origin)}catch(x){}}});
 function direct(reason){if(ok)return;msg.textContent='بنفتح النظام مباشرة…';why.textContent=reason;why.hidden=false;o.hidden=false;
   setTimeout(()=>{if(!ok)location.replace(APP)},1200)}
 f.src=APP;
