@@ -9,42 +9,136 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
-html,body{margin:0;height:100%;background:#0f6e66;overflow:hidden}
-#app{position:fixed;inset:0;width:100%;height:100%;border:0;background:#f4f6f5}
-#wait{position:fixed;inset:0;z-index:2;display:grid;place-items:center;align-content:center;gap:14px;background:#0f6e66;color:#fff;font:600 16px system-ui,sans-serif;text-align:center;padding:24px}
-#wait[hidden]{display:none}
-#wait a{color:#0f6e66;background:#fff;border-radius:12px;padding:12px 20px;text-decoration:none;font-weight:700}
-#wait a[hidden]{display:none}
-#wait small{font-weight:400;opacity:.85;max-width:320px;line-height:1.7}
+  html,body{margin:0;height:100%;background:#0f6e66;overflow:hidden}
+  body{font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif}
+  #app{position:fixed;inset:0;width:100%;height:100%;border:0;background:#f4f6f5}
+  #app[hidden]{display:none}
+  #wait{position:fixed;inset:0;z-index:2;display:grid;place-items:center;align-content:center;gap:16px;background:#0f6e66;color:#fff;text-align:center;padding:max(24px,env(safe-area-inset-top)) max(24px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left));box-sizing:border-box}
+  #wait[hidden],#wait a[hidden],#wait small[hidden]{display:none}
+  #msg{font-size:clamp(17px,2.3vw,28px);font-weight:700}
+  #open{display:inline-flex;align-items:center;justify-content:center;min-height:52px;max-width:min(90vw,420px);padding:10px 24px;box-sizing:border-box;color:#0f6e66;background:#fff;border-radius:12px;text-decoration:none;font-size:clamp(16px,1.8vw,23px);font-weight:700}
+  #open:focus-visible{outline:4px solid #ffdc68;outline-offset:6px}
+  #why{font-size:clamp(13px,1.35vw,18px);font-weight:400;opacity:.92;max-width:760px;line-height:1.8}
 </style>
 </head>
 <body>
-<div id="wait"><span id="msg">جارٍ فتح إدارة العملاء…</span><a id="open" href="#" hidden>افتح إدارة العملاء</a><small id="why" hidden></small></div>
+<div id="wait" role="status" aria-live="polite">
+  <span id="msg">جارٍ فتح إدارة العملاء…</span>
+  <a id="open" href="#" hidden>افتح إدارة العملاء</a>
+  <small id="why" hidden></small>
+</div>
 <iframe id="app" title="إدارة العملاء" allow="geolocation; fullscreen; clipboard-write" referrerpolicy="no-referrer-when-downgrade"></iframe>
 <script>
-/* رابط النظام (exec). لو اتغير النشر، عدّل السطر ده بس. */
+'use strict';
+/* CRM UNIFIED R1 (2026-10-29)
+   نفس الملفات لكل الأجهزة. منصة Samsung Tizen لا تتيح التفاعل مع محتوى iframe
+   بالطريقة المطلوبة؛ لذلك تعرض صفحة فتح مباشر بدل محاولة تشغيل الواجهة داخله.
+   باقي الأجهزة تحتفظ ببروتوكول ready/gate/cacheGet/cachePut الحالي. */
+
+/* رابط نشر Apps Script المعتمد؛ لا تغيّره إلا عندما يتغيّر النشر. */
 const APP='https://script.google.com/macros/s/AKfycbwkCJ8TuyB94kpOBbGSP_KQu-vqeSv2fld8Dy-o8RCTUsu9iDdOcKvmmPf9MdiC6jz0/exec';
-/* EMBED-1 (2026-10-19): جوجل بيرفض يعرض جوه الإطار صفحات تسجيل الدخول واختيار الحساب والأخطاء
-   («script.google.com refused to connect»). البرنامج بيبعت «جاهز» لما يفتح فعلًا؛ لو ما وصلش في الوقت،
-   الصفحة بتفتح النظام مباشرة (من غير إطار) علشان جوجل يقدر يطلب الدخول، وبعد كده الإطار يرجع يشتغل عادي. */
 const WAIT_MS=12000;
-const f=document.getElementById('app'),w=document.getElementById('wait'),o=document.getElementById('open'),msg=document.getElementById('msg'),why=document.getElementById('why');
-let ok=false;o.href=APP;
+const f=document.getElementById('app');
+const w=document.getElementById('wait');
+const o=document.getElementById('open');
+const msg=document.getElementById('msg');
+const why=document.getElementById('why');
+const isSamsungTV=Boolean(window.tizen)||/\bTizen\b/i.test(navigator.userAgent);
+let ok=false;
+let waitTimer=null;
+let redirectTimer=null;
+o.href=APP;
+
+/* لا نعدّل رسالة التواصل المعتمدة بين واجهة Apps Script وغلاف GitHub. */
 const fromGoogle=origin=>/^https:\/\/([\w-]+\.)*(googleusercontent\.com|google\.com)$/.test(origin);
-/* VIS-FAST-2 (2026-10-20): نسخة الزيارات على الجهاز بتتحفظ هنا (في صفحة التطبيق نفسها)، علشان الإطار ساعات بيتمنع من التخزين.
-   لكل مستخدم مفتاح، أقصى 2.5 ميجا و12 ساعة، ومن مواقع جوجل بس، والرد بيروح لنفس الإطار اللي طلب. */
-const C_MAX=2.5e6,C_AGE=12*36e5,ckey=k=>'crm-cache:'+String(k).slice(0,120);
-window.addEventListener('message',e=>{if(!fromGoogle(e.origin)||!e.data||!e.data.crm)return;const d=e.data;
-  if(d.crm==='ready'||d.crm==='gate'){ok=true;w.hidden=true;return}
-  if(d.crm==='cachePut'&&typeof d.key==='string'&&typeof d.raw==='string'&&d.raw.length<=C_MAX){try{localStorage.setItem(ckey(d.key),JSON.stringify({at:Date.now(),raw:d.raw}))}catch(x){}return}
-  if(d.crm==='cacheGet'&&typeof d.key==='string'){let v=null;try{v=JSON.parse(localStorage.getItem(ckey(d.key))||'null')}catch(x){}
-    if(v&&v.raw&&Date.now()-v.at<C_AGE)try{e.source.postMessage({crm:'cacheVal',key:d.key,at:v.at,raw:v.raw},e.origin)}catch(x){}}});
-function direct(reason){if(ok)return;msg.textContent='بنفتح النظام مباشرة…';why.textContent=reason;why.hidden=false;o.hidden=false;
-  setTimeout(()=>{if(!ok)location.replace(APP)},1200)}
-f.src=APP;
-setTimeout(()=>direct('جوجل محتاج يتأكد من حسابك. لو طلب تسجيل الدخول أو اختيار الحساب، اختار حسابك المسجل في النظام.'),WAIT_MS);
-if(!navigator.onLine){msg.textContent='مفيش إنترنت دلوقتي';o.hidden=false}
-if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+const C_MAX=2.5e6;
+const C_AGE=12*36e5;
+const ckey=k=>'crm-cache:'+String(k).slice(0,120);
+
+window.addEventListener('message',e=>{
+  if(!fromGoogle(e.origin)||!e.data||!e.data.crm)return;
+  const d=e.data;
+  if(d.crm==='ready'||d.crm==='gate'){
+    ok=true;
+    clearTimeout(waitTimer);
+    clearTimeout(redirectTimer);
+    w.hidden=true;
+    return;
+  }
+  if(d.crm==='cachePut'&&typeof d.key==='string'&&typeof d.raw==='string'&&d.raw.length<=C_MAX){
+    try{localStorage.setItem(ckey(d.key),JSON.stringify({at:Date.now(),raw:d.raw}));}catch(x){}
+    return;
+  }
+  if(d.crm==='cacheGet'&&typeof d.key==='string'){
+    let v=null;
+    try{v=JSON.parse(localStorage.getItem(ckey(d.key))||'null');}catch(x){}
+    if(v&&typeof v.raw==='string'&&Date.now()-v.at<C_AGE){
+      try{e.source.postMessage({crm:'cacheVal',key:d.key,at:v.at,raw:v.raw},e.origin);}catch(x){}
+    }
+  }
+});
+
+function showOpen(reason,autoRedirect){
+  if(ok)return;
+  msg.textContent=isSamsungTV?'إدارة العملاء — العوام':'فتح إدارة العملاء مباشرة';
+  why.textContent=reason;
+  why.hidden=false;
+  o.hidden=!navigator.onLine;
+  if(isSamsungTV&&navigator.onLine)o.focus();
+  if(autoRedirect&&navigator.onLine&&!isSamsungTV){
+    clearTimeout(redirectTimer);
+    redirectTimer=setTimeout(()=>{if(!ok&&navigator.onLine)location.replace(APP);},1200);
+  }
+}
+
+function startWeb(){
+  if(ok)return;
+  clearTimeout(waitTimer);
+  if(!navigator.onLine){
+    msg.textContent='لا يوجد اتصال بالإنترنت';
+    why.textContent='تأكد من اتصال الجهاز بالإنترنت ثم أعد المحاولة.';
+    why.hidden=false;
+    o.hidden=true;
+    return;
+  }
+  f.src=APP;
+  waitTimer=setTimeout(()=>showOpen('قد يحتاج Google إلى تسجيل الدخول أو اختيار الحساب المسجل في النظام.',true),WAIT_MS);
+}
+
+if(isSamsungTV){
+  /* واجهة تشغيل قابلة للاختيار بالريموت؛ لا نحاول التفاعل داخل iframe على Tizen. */
+  f.hidden=true;
+  if(navigator.onLine)showOpen('اضغط موافق (Enter) لفتح النظام مباشرة. تشغيل Google Apps Script وتسجيل الدخول داخل متصفح التلفزيون يحتاجان اختبارًا فعليًا.',false);
+  else{msg.textContent='لا يوجد اتصال بالإنترنت';why.textContent='وصّل الشاشة بالإنترنت ثم أعد المحاولة.';why.hidden=false;o.hidden=true;}
+  document.addEventListener('keydown',event=>{
+    if([37,38,39,40].includes(event.keyCode))o.focus();
+    if(event.keyCode===10009){
+      try{if(window.tizen&&tizen.application)tizen.application.getCurrentApplication().exit();}catch(x){}
+    }
+  });
+}else{
+  startWeb();
+}
+
+window.addEventListener('offline',()=>{
+  if(ok)return;
+  clearTimeout(waitTimer);
+  clearTimeout(redirectTimer);
+  msg.textContent='لا يوجد اتصال بالإنترنت';
+  why.textContent='يلزم الإنترنت لتحميل بيانات إدارة العملاء.';
+  why.hidden=false;
+  o.hidden=true;
+});
+window.addEventListener('online',()=>{
+  if(ok)return;
+  if(isSamsungTV)showOpen('اضغط موافق (Enter) لفتح النظام مباشرة.',false);
+  else startWeb();
+});
+
+/* خدمة التخزين مخصصة لغلاف GitHub Pages فقط؛ لا تخزن بيانات Apps Script. */
+if(!isSamsungTV&&'serviceWorker' in navigator&&location.protocol==='https:'){
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
 </script>
 </body>
 </html>
