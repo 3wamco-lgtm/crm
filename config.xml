@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets"
+        xmlns:tizen="http://tizen.org/ns/widgets"
+        id="https://3wamco-lgtm.github.io/crm/"
+        version="1.0.0"
+        viewmodes="maximized">
+    <!-- معرف تجريبي لحزمة المطور؛ يُراجع عند إنشاء مشروع Tizen Studio. -->
+    <tizen:application id="AlAwamCRM1.CustomerTV" package="AlAwamCRM1" required_version="5.5"/>
+    <content src="index.html"/>
+    <feature name="http://tizen.org/feature/screen.size.normal.1080.1920"/>
+    <icon src="icon-512.png"/>
+    <name>Al Awam CRM</name>
+    <tizen:profile name="tv-samsung"/>
+    <tizen:setting screen-orientation="landscape" context-menu="disable"
+                   background-support="disable" encryption="disable"
+                   install-location="auto" hwkey-event="enable"/>
+    <tizen:privilege name="http://tizen.org/privilege/internet"/>
+    <access origin="https://script.google.com" subdomains="true"/>
+    <access origin="https://google.com" subdomains="true"/>
+    <access origin="https://googleusercontent.com" subdomains="true"/>
+    <access origin="https://gstatic.com" subdomains="true"/>
+    <access origin="https://3wamco-lgtm.github.io"/>
+    <tizen:allow-navigation>*.google.com *.googleusercontent.com *.gstatic.com</tizen:allow-navigation>
+</widget>
