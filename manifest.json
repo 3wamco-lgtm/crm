@@ -1,12 +1,13 @@
 {
   "name": "إدارة العملاء — العوام",
   "short_name": "إدارة العملاء",
+  "description": "نظام إدارة العملاء والمندوبين لشركة العوام",
   "lang": "ar",
   "dir": "rtl",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "background_color": "#0f6e66",
   "theme_color": "#0f6e66",
   "icons": [
